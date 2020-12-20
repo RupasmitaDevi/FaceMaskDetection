@@ -23,7 +23,7 @@ def _ImageDataGenerator(directory_name, batch_size, image_height, image_width):
     iterations = int(np.floor(count / batch_size))
 
     X = np.zeros((batch_size, image_height, image_width, 3), dtype=np.float32)
-    y = np.zeros((batch_size, image_height, image_width, 3), dtype=np.float32)
+    y = np.zeros((batch_size,1), dtype=np.float32)
 
     for itr in range(iterations):
         for i in range(batch_size):
