@@ -7,6 +7,9 @@ from keras.callbacks import TensorBoard, ModelCheckpoint
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import f1_score
 from sklearn.utils import shuffle
+import tensorflow as tf
+import matplotlib.pyplot as plt
+from tensorflow import keras
 import imutils
 import cv2
 import numpy as np
@@ -15,88 +18,104 @@ import os
 
 def _ImageDataGenerator(directory_name, batch_size, image_height, image_width):
 
-    file_list = os.listdir(directory_name)
-    files = dict(zip(map(lambda x: x.split('.')[0], file_list), file_list))
-    used_files = []
-    count = len(file_list)
+    X = []
+    y = []
+    image_list = os.listdir(directory_name)
+    images = dict(zip(map(lambda x: x.split('.')[0], image_list), image_list))
+    images_already_read = []
+    size = (200, 200)
 
-    iterations = int(np.floor(count / batch_size))
+    i = 0
+    while(True):
+        if len(images)==0:
+            break
+        image_label = random.choice(list(images.keys()))
+        image_file = images[image_label]
 
-    X = np.zeros((batch_size, image_height, image_width, 3), dtype=np.float32)
-    y = np.zeros((batch_size,1), dtype=np.float32)
+        # remove the image that has been once read
+        images_already_read.append(images.pop(image_label))
 
-    for itr in range(iterations):
-        for i in range(batch_size):
-            if len(files)==0:
-                break
-            random_image_label = random.choice(list(files.keys()))
-            random_image_file = files[random_image_label]
-
-            # We've used this image now, so we can't repeat it in this iteration
-            used_files.append(files.pop(random_image_label))
-
-            # We have to scale the input pixel values to the range [0, 1] for
-            # Keras so we divide by 255 since the image is 8-bit RGB
-            raw_data = cv2.imread(os.path.join(directory_name, random_image_file))
-            rgb_data = cv2.cvtColor(raw_data, cv2.COLOR_BGR2RGB)
-            rgb_data = rgb_data.reshape([-1, image_height, image_width, 3])
-            processed_data = np.array(rgb_data) / 255.0
-            
-            X[i] = processed_data
-
-            if random_image_label.lower().startswith("no"):
-                y[i] = 0
-            else:
-                y[i] = 1
+        # read the image from the directory
+        im = cv2.imread(os.path.join(directory_name, image_file))
+        try:
+            # rescale it to (200, 200)
+            im = cv2.resize(im, size, interpolation = cv2.INTER_AREA)
+        except Exception as e:
+            continue
+        # print("................HERE.................\n")
+        # print("shape: ",im.shape)
+        
+        rgb_image = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
+        rgb_image = rgb_image.reshape([image_height, image_width, 3])
+        processed_data = np.array(rgb_image) / 255.0
+        
+        # Augmentation ----- Flip
+        im1 = cv2.flip(im, 0)
+        rgb_image_1 = cv2.cvtColor(im1, cv2.COLOR_BGR2RGB)
+        rgb_image_1 = rgb_image_1.reshape([image_height, image_width, 3])
+        processed_data_1 = np.array(rgb_image_1) / 255.0
+  
+        X.append(processed_data)
+        X.append(processed_data_1)
+        if image_label.lower().startswith("no"):
+            y.append(0)
+            y.append(0)
+        else:
+            y.append(1)
+            y.append(1)
+        i = i + 1
+    X = (np.array(X)).reshape(2*i, 150, 150, 3)
+    y = (np.array(y)).reshape(2*i,1)
+    # print("___________________Features__________________\n")
+    # print(X)
+    # print("No. of Features: ", len(X))
+    # print("___________________Labels__________________\n")
+    # print("No. of Labels: ", len(y))
+    # print(y)
 
     return X, y
 
+training_data = "./train_images"
 
-model =Sequential([
-    Conv2D(100, (3,3), activation='relu', input_shape=(150, 150, 3)),
-    MaxPooling2D(2,2),
-    
-    Conv2D(100, (3,3), activation='relu'),
-    MaxPooling2D(2,2),
-    
-    Flatten(),
-    Dropout(0.5),
-    Dense(50, activation='relu'),
-    Dense(2, activation='softmax')
-])
+X, y = _ImageDataGenerator(training_data, batch_size = 10, image_height=200, image_width=200)
+
+validation_data = "./train_images"
+
+X, _y = _ImageDataGenerator(validation_data, batch_size=10, image_height = 200, image_width=200)
+
+model = keras.Sequential()
+model.add(Conv2D(100, (3,3), activation='relu', input_shape=(200, 200, 3)))
+model.add(MaxPooling2D(2,2))
+model.add(Dropout(0.15))
+model.add(Conv2D(100, (3,3), activation='relu'))
+model.add(MaxPooling2D(2,2))
+model.add(Dropout(0.20))
+model.add(Flatten())
+model.add(Dense(50, activation = 'relu'))
+model.add(Dense(2, activation ='softmax'))
+model.summary()
 model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['acc'])
 
-TRAINING_DIR = "./train"
-# train_datagen = ImageDataGenerator(rescale=1.0/255,
-#                                    rotation_range=40,
-#                                    width_shift_range=0.2,
-#                                    height_shift_range=0.2,
-#                                    shear_range=0.2,
-#                                    zoom_range=0.2,
-#                                    horizontal_flip=True,
-#                                    fill_mode='nearest')
-train_datagen = _ImageDataGenerator(TRAINING_DIR, batch_size = 10, image_height=150, image_width=150)
-# train_generator = train_datagen.flow_from_directory(TRAINING_DIR, 
-#                                                     batch_size=10, 
-#                                                     target_size=(150, 150))
-VALIDATION_DIR = "./test"
-# validation_datagen = ImageDataGenerator(rescale=1.0/255)
+batch_size = 10
+epochs = 5
+history = model.fit(X, y, batch_size=batch_size,
+                    epochs=epochs, validation_split=0.1)
+model.save("apna.h5")
 
-validation_datagen = _ImageDataGenerator(VALIDATION_DIR, batch_size=10, image_height = 150, image_width=150)
+tf.keras.utils.plot_model(model, to_file="img1.png")
+plt.subplot(211)
+plt.plot(history.history['accuracy'])
+plt.plot(history.history['val_accuracy'])
+plt.title('model accuracy')
+plt.ylabel('accuracy')
+plt.xlabel('epoch')
+plt.legend(['train', 'val'], loc='upper left')
+plt.subplot(212)
+plt.plot(history.history['loss'])
+plt.plot(history.history['val_loss'])
+plt.title('model loss')
+plt.ylabel('loss'); plt.xlabel('epoch')
+plt.legend(['train', 'val'], loc='upper left')
+plt.show()
 
-# validation_generator = validation_datagen.flow_from_directory(VALIDATION_DIR, 
-#                                                          batch_size=10, 
-#                                                          target_size=(150, 150))
-checkpoint = ModelCheckpoint('model2.h5',monitor='val_loss',verbose=0,save_best_only=False,mode='auto')
-
-
-# history = model.fit_generator(train_generator,
-#                               epochs=10,
-#                               validation_data=validation_generator,
-#                               callbacks=[checkpoint])
-
-history = model.fit_generator(train_datagen,
-                              epochs=10,
-                              validation_data=validation_datagen,
-                              callbacks=[checkpoint],
-                              use_multiprocessing=True)
+                            
