@@ -1,20 +1,20 @@
 import cv2
 import numpy as np
 from keras.models import load_model
-model=load_model("./model2-005.h5")
+model=load_model("./apna.h5")
 
 labels_dict={0:'without mask',1:'mask'}
 color_dict={0:(0,0,255),1:(0,255,0)}
 
 size = 4
-webcam = cv2.VideoCapture(0)
-if not (webcam.isOpened()):
-    print("Could not open video device")
+# webcam = cv2.VideoCapture(0)
+# if not (webcam.isOpened()):
+#     print("Could not open video device")
 # We load the xml file
 classifier = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
 while True:
-    (rval, im) = webcam.read()
-    # im = cv2.imread('sample.png')
+    # (rval, im) = webcam.read()
+    im = cv2.imread('sample.png')
     cv2.imshow('preview',im)
     im=cv2.flip(im,1,1) #Flip to act as a mirror
     # Resize the image to speed up detection
