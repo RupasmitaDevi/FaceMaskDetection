@@ -7,8 +7,10 @@ from keras.callbacks import TensorBoard, ModelCheckpoint
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import f1_score
 from sklearn.utils import shuffle
+from sklearn.metrics import confusion_matrix, classification_report
 import tensorflow as tf
 import matplotlib.pyplot as plt
+from sklearn.linear_model import LogisticRegression
 from tensorflow import keras
 import imutils
 import cv2
@@ -64,7 +66,7 @@ def _ImageDataGenerator(directory_name, batch_size, image_height, image_width):
             y.append(1)
             y.append(1)
         i = i + 1
-    X = (np.array(X)).reshape(2*i, 150, 150, 3)
+    X = (np.array(X)).reshape(2*i, 200, 200, 3)
     y = (np.array(y)).reshape(2*i,1)
     # print("___________________Features__________________\n")
     # print(X)
@@ -75,47 +77,74 @@ def _ImageDataGenerator(directory_name, batch_size, image_height, image_width):
 
     return X, y
 
-training_data = "./train_images"
+def logistic(x_train, y_train, x_test, y_test):
+	
+	x_train = x_train[:, :, 0, 0]
 
-X, y = _ImageDataGenerator(training_data, batch_size = 10, image_height=200, image_width=200)
+	# logistic regression
+	logistic_model = LogisticRegression()
+	logistic_model = logistic_model.fit(x_train, y_train)
 
-validation_data = "./train_images"
+	preds = logistic_model.predict(x_train)
+	print(classification_report(preds, y_train))
+	print(confusion_matrix(preds, y_train))
 
-X, _y = _ImageDataGenerator(validation_data, batch_size=10, image_height = 200, image_width=200)
+	x_test = x_test[:, :, 0, 0]
+	preds = logistic_model.predict(x_test)
+	print(classification_report(preds, y_test))
+	print(confusion_matrix(preds, y_test))
 
-model = keras.Sequential()
-model.add(Conv2D(100, (3,3), activation='relu', input_shape=(200, 200, 3)))
-model.add(MaxPooling2D(2,2))
-model.add(Dropout(0.15))
-model.add(Conv2D(100, (3,3), activation='relu'))
-model.add(MaxPooling2D(2,2))
-model.add(Dropout(0.20))
-model.add(Flatten())
-model.add(Dense(50, activation = 'relu'))
-model.add(Dense(2, activation ='softmax'))
-model.summary()
-model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['acc'])
+def createmodel(X, y, batch_size = 10, image_height=200, image_width=200):
 
-batch_size = 10
-epochs = 5
-history = model.fit(X, y, batch_size=batch_size,
-                    epochs=epochs, validation_split=0.1)
-model.save("apna.h5")
+    model = keras.Sequential()
+    model.add(Conv2D(100, (3,3), activation='relu', input_shape=(200, 200, 3)))
+    model.add(MaxPooling2D(2,2))
+    model.add(Dropout(0.15))
+    model.add(Conv2D(100, (3,3), activation='relu'))
+    model.add(MaxPooling2D(2,2))
+    model.add(Dropout(0.20))
+    model.add(Flatten())
+    model.add(Dense(50, activation = 'relu'))
+    model.add(Dense(2, activation ='softmax'))
+    model.summary()
+    model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['acc'])
 
-tf.keras.utils.plot_model(model, to_file="img1.png")
-plt.subplot(211)
-plt.plot(history.history['accuracy'])
-plt.plot(history.history['val_accuracy'])
-plt.title('model accuracy')
-plt.ylabel('accuracy')
-plt.xlabel('epoch')
-plt.legend(['train', 'val'], loc='upper left')
-plt.subplot(212)
-plt.plot(history.history['loss'])
-plt.plot(history.history['val_loss'])
-plt.title('model loss')
-plt.ylabel('loss'); plt.xlabel('epoch')
-plt.legend(['train', 'val'], loc='upper left')
-plt.show()
+    batch_size = 10
+    epochs = 5
+    history = model.fit(X, y, batch_size=batch_size,
+                        epochs=epochs, validation_split=0.1)
+    model.save("apna.h5")
 
-                            
+    # tf.keras.utils.plot_model(model, to_file="img1.png")
+    plt.subplot(211)
+    plt.plot(history.history['accuracy'])
+    plt.plot(history.history['val_accuracy'])
+    plt.title('model accuracy')
+    plt.ylabel('accuracy')
+    plt.xlabel('epoch')
+    plt.legend(['train', 'val'], loc='upper left')
+    plt.subplot(212)
+    plt.plot(history.history['loss'])
+    plt.plot(history.history['val_loss'])
+    plt.title('model loss')
+    plt.ylabel('loss'); plt.xlabel('epoch')
+    plt.legend(['train', 'val'], loc='upper left')
+    plt.show()
+
+def main():
+    training_data = "./train_images"
+
+    X, y = _ImageDataGenerator(training_data, batch_size = 10, image_height=200, image_width=200)
+
+    validation_data = "./train_images"
+
+    _X, _y = _ImageDataGenerator(validation_data, batch_size=10, image_height = 200, image_width=200)
+
+    # baseline model --- Logistic regression
+    logistic(X, y, _X, _y)
+
+    # keras model
+    createmodel(X, y, 10, 200, 200)
+
+if __name__ == "__main__":
+    main()          
