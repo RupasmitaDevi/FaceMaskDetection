@@ -1,54 +1,70 @@
+'''
+Authors:
+1. Rupasmita Devi 
+2. Salil kulkarni
+'''
+
 import cv2
 import numpy as np
 from keras.models import load_model
-model=load_model("./model2-005.h5")
 
-labels_dict={0:'without mask',1:'mask'}
-color_dict={0:(0,0,255),1:(0,255,0)}
-
-size = 4
+IMPORT_XML = 'haarcascade_frontalface_default.xml'
+MODEL = "./apna3.h5"
+WAIT_TIME = 10
 webcam = cv2.VideoCapture(0)
-if not (webcam.isOpened()):
-    print("Could not open video device")
-# We load the xml file
-classifier = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
-while True:
-    (rval, im) = webcam.read()
-    # im = cv2.imread('sample.png')
-    cv2.imshow('preview',im)
-    im=cv2.flip(im,1,1) #Flip to act as a mirror
-    # Resize the image to speed up detection
-    mini = cv2.resize(im, (im.shape[1] // size, im.shape[0] // size))
-    print(mini)
-    # detect MultiScale / faces 
-    faces = classifier.detectMultiScale(mini)
+TEST_IMAGE = 'aniston.jpg'
+def plot_box(image, x, y, width, height, color, text):
+    font_style = cv2.FONT_HERSHEY_SIMPLEX
+    cv2.rectangle(image,(x,y),(x+width,y+height),color,3)
+    cv2.putText(image, text, (x, y), font_style, 1, color, 2, cv2.LINE_AA)
 
-    # Draw rectangles around each face
-    for f in faces:
-        (x, y, w, h) = [v * size for v in f] #Scale the shapesize backup
-        #Save just the rectangle faces in SubRecFaces
-        face_img = im[y:y+h, x:x+w]
-        resized=cv2.resize(face_img,(150,150))
-        normalized=resized/255.0
-        reshaped=np.reshape(normalized,(1,150,150,3))
-        reshaped = np.vstack([reshaped])
-        result=model.predict(reshaped)
-        #print(result)
-        
-        label=np.argmax(result,axis=1)[0]
-      
-        cv2.rectangle(im,(x,y),(x+w,y+h),color_dict[label],2)
-        cv2.rectangle(im,(x,y-40),(x+w,y),color_dict[label],-1)
-        cv2.putText(im, labels_dict[label], (x, y-10),cv2.FONT_HERSHEY_SIMPLEX,0.8,(255,255,255),2)
-        
-    # Show the image
-    cv2.imshow('LIVE',   im)
-    key = cv2.waitKey(10)
-    # if Esc key is press then break out of the loop 
-    if key == 27: #The Esc key
-        break
-# Stop video
-webcam.release()
+def start_capturing(model, object_detection, webcam):
 
-# Close all started windows
-cv2.destroyAllWindows()
+    while True:
+        '''
+        Un - Coment the block below (Line 27-29) to use Webcame
+        Comment in Line 32
+        '''
+        if not (webcam.isOpened()):
+            print("Could not open webcam on this device!")
+        (_, image) = webcam.read()
+
+        # image = cv2.imread(TEST_IMAGE) # Comment this if you are using webcam
+        image = cv2.flip(image, 1)
+        heads = object_detection.detectMultiScale(image)
+        # print(heads)
+
+        for h in heads:
+            (x, y, width, height) = h
+            head = image[y:y+height, x:x+width]
+            
+            rescaled_image=cv2.resize(head,(200,200))
+
+            # cv2.imshow('preview',rescaled_image)
+            processed_image=rescaled_image/255.0
+            processed_image = processed_image.reshape([1,200,200,3])
+            
+            pred=model.predict(processed_image)
+
+            # print(pred)
+            
+            label=np.argmax(pred,axis=1)[0]
+            labels={0:'No Mask',1:'Mask'}
+            text = labels[label]
+            colors={0:(0,0,255),1:(0,255,0)}
+            color = colors[label]
+            plot_box(image, x, y, width, height, color, text)
+        
+        cv2.imshow('HELLO!', image)
+        key = cv2.waitKey(WAIT_TIME)
+
+
+def main():
+    model=load_model(MODEL)
+    object_detection = cv2.CascadeClassifier(IMPORT_XML)
+    start_capturing(model, object_detection, webcam)
+    webcam.release()
+    cv2.destroyAllWindows()
+
+if __name__ == "__main__":
+    main() 
