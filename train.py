@@ -114,7 +114,7 @@ def createmodel(X, y, x_test, y_test, batch_size = 10, image_height=200, image_w
     epochs = 5
     history = model.fit(X, y, batch_size=batch_size,
                         epochs=epochs, validation_split=0.1)
-    model.save("model_name.h5")
+    model.save("model2.h5")
 
     # tf.keras.utils.plot_model(model, to_file="img1.png")
 
@@ -145,18 +145,65 @@ def createmodel(X, y, x_test, y_test, batch_size = 10, image_height=200, image_w
     print(classification_report(y_test1, y_pred))
     print(confusion_matrix(y_test1, y_pred))
 
+def create_baseline_cnn_model(X, y, x_test, y_test, batch_size = 10, image_height=200, image_width=200):
+
+    model = keras.Sequential()
+    model.add(Conv2D(100, (3,3), activation='relu', input_shape=(200, 200, 3)))
+    model.add(MaxPooling2D(2,2))
+    model.add(Flatten())
+    model.add(Dense(2, activation ='softmax'))
+    model.summary()
+    model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+
+    batch_size = 10
+    epochs = 5
+    history = model.fit(X, y, batch_size=batch_size,
+                        epochs=epochs, validation_split=0.1)
+    model.save("model_baseline_cnn_2.h5")
+
+    # tf.keras.utils.plot_model(model, to_file="img1.png")
+
+    plt.subplot(211)
+    plt.plot(history.history['accuracy'])
+    plt.plot(history.history['val_accuracy'])
+    plt.title('baseline cnn model accuracy')
+    plt.ylabel('accuracy')
+    plt.xlabel('epoch')
+    plt.legend(['train', 'val'], loc='upper left')
+    plt.subplot(212)
+    plt.plot(history.history['loss'])
+    plt.plot(history.history['val_loss'])
+    plt.title('baseline cnn model loss')
+    plt.ylabel('loss'); plt.xlabel('epoch')
+    plt.legend(['train', 'val'], loc='upper left')
+    plt.show()
+
+    preds = model.predict(X)
+    y_pred = np.argmax(preds, axis=1)
+    y_train1 = np.argmax(y, axis=1)
+    print(classification_report(y_train1, y_pred))
+    print(confusion_matrix(y_train1, y_pred))
+
+    preds = model.predict(x_test)
+    y_pred = np.argmax(preds, axis=1)
+    y_test1 = np.argmax(y_test, axis=1)
+    print(classification_report(y_test1, y_pred))
+    print(confusion_matrix(y_test1, y_pred))
+
 
 def main():
-    training_data = "./train_images"
+    training_data = "./train_images/train_set"
 
     X, y = _ImageDataGenerator(training_data, batch_size = 10, image_height=200, image_width=200)
 
-    validation_data = "./train_images"
+    validation_data = "./train_images/train_set"
 
     _X, _y = _ImageDataGenerator(validation_data, batch_size=10, image_height = 200, image_width=200)
 
     # baseline model --- Logistic regression
     logistic(X, y, _X, _y)
+
+    create_baseline_cnn_model(X, y, _X, _y, 10, 200, 200)
 
     # keras model
     createmodel(X, y, _X, _y, 10, 200, 200)

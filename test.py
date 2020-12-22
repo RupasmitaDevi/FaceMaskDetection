@@ -12,7 +12,7 @@ IMPORT_XML = 'haarcascade_frontalface_default.xml'
 MODEL = "./apna3.h5"
 WAIT_TIME = 10
 webcam = cv2.VideoCapture(0)
-TEST_IMAGE = 'selfno.jpg'
+TEST_IMAGE = 'aniston.jpg'
 def plot_box(image, x, y, width, height, color, text):
     font_style = cv2.FONT_HERSHEY_SIMPLEX
     cv2.rectangle(image,(x,y),(x+width,y+height),color,3)
@@ -23,12 +23,13 @@ def start_capturing(model, object_detection, webcam):
     while True:
         '''
         Un - Coment the block below (Line 27-29) to use Webcame
+        Comment in Line 32
         '''
-        # if not (webcam.isOpened()):
-        #     print("Could not open webcam on this device!")
-        # (_, image) = webcam.read()
+        if not (webcam.isOpened()):
+            print("Could not open webcam on this device!")
+        (_, image) = webcam.read()
 
-        image = cv2.imread(TEST_IMAGE) # This line predicts on a static image
+        # image = cv2.imread(TEST_IMAGE) # Comment this if you are using webcam
         image = cv2.flip(image, 1)
         heads = object_detection.detectMultiScale(image)
         # print(heads)
@@ -54,7 +55,7 @@ def start_capturing(model, object_detection, webcam):
             color = colors[label]
             plot_box(image, x, y, width, height, color, text)
         
-        cv2.imshow('HELLO', image)
+        cv2.imshow('HELLO!', image)
         key = cv2.waitKey(WAIT_TIME)
 
 
